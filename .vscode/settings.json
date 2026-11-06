@@ -1,0 +1,5 @@
+{
+  // "Go Live" (Live Server) serves the BUILT site. Run `npm run build` first,
+  // and again after every change. For live editing use `npm run dev` instead.
+  "liveServer.settings.root": "/dist"
+}

@@ -1,0 +1,147 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+ * Design tokens. Change the whole palette here.
+ * Stored as "r g b" so Tailwind can add alpha (bg-accent/20).
+ * --accent is the red thread from the avatar's bracelet, brightened for screens.
+ * ------------------------------------------------------------------------- */
+:root {
+  --bg: 7 8 11;          /* #07080B */
+  --ink: 236 238 242;    /* #ECEEF2 cool off-white */
+  --muted: 150 156 170;  /* #969CAA */
+  --accent: 242 70 58;   /* #F2463A */
+  --neon: 142 214 255;   /* the scene's cyan, used only inside the wallpaper and previews */
+  --gutter: clamp(16px, 4vw, 56px);
+  color-scheme: dark;
+}
+
+@layer base {
+  html {
+    background: rgb(var(--bg));
+    color: rgb(var(--ink));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  html.lenis, html.lenis body { height: auto; }
+  .lenis.lenis-smooth { scroll-behavior: auto !important; }
+  .lenis.lenis-stopped { overflow: hidden; }
+  body {
+    @apply font-sans;
+    background: rgb(var(--bg));
+    overflow-x: hidden;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  ::selection { background: rgb(var(--accent)); color: rgb(var(--bg)); }
+  a { color: inherit; text-decoration: none; }
+  :focus-visible {
+    outline: 2px solid rgb(var(--accent));
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  [tabindex='-1']:focus { outline: none; }
+}
+
+@layer components {
+  .page { @apply mx-auto w-full max-w-page; padding-inline: var(--gutter); }
+
+  /* micro label: "01 / WORK" */
+  .label { @apply font-mono text-[11px] uppercase tracking-[0.18em] text-muted; }
+
+  .display {
+    font-family: Archivo, 'Arial Narrow', sans-serif;
+    font-stretch: 62%;
+    font-variation-settings: 'wdth' 62;
+    font-weight: 700;
+    line-height: 0.86;
+    letter-spacing: -0.02em;
+    word-spacing: 0.14em; /* the condensed cut makes spaces too narrow ("OFF THE" read as one word) */
+    text-transform: uppercase;
+  }
+  .serif-em { @apply font-serif italic font-normal; letter-spacing: -0.01em; word-spacing: normal; text-transform: none; }
+
+  /* ghost button with arrow */
+  .btn {
+    @apply relative inline-flex items-center gap-2.5 rounded-full border border-ink/20 px-5 py-3 text-sm font-medium text-ink
+      transition-[border-color,background-color,color] duration-300;
+    backdrop-filter: blur(10px);
+    background: rgb(var(--bg) / 0.35);
+  }
+  .btn:hover { @apply border-ink/60 bg-ink/[0.06]; }
+  .btn-solid { @apply border-accent bg-accent text-bg; }
+  .btn-solid:hover { @apply border-ink bg-ink text-bg; }
+  .btn .arrow { transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .btn:hover .arrow { transform: translate(2px, -2px); }
+
+  .hairline { border-color: rgb(var(--ink) / 0.12); }
+
+  .glass {
+    background: rgb(12 14 19 / 0.55);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  }
+
+  .chip { @apply inline-flex items-center gap-1.5 rounded-full border border-ink/15 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.08em] text-ink/80; }
+}
+
+/* hero name: sized by width AND height so it never rises under the nav on short laptop screens */
+.hero-name { font-size: clamp(88px, 19vw, 300px); }
+@media (min-width: 768px) {
+  .hero-name { font-size: clamp(64px, min(15.5vw, calc((100vh - 500px) / 1.75)), 280px); }
+}
+@media (min-width: 640px) and (max-height: 700px) {
+  .hero-intro { display: none !important; }
+  .hero-name { font-size: clamp(56px, min(15.5vw, calc((100vh - 380px) / 1.65)), 280px); }
+}
+
+/* custom cursor only where it makes sense */
+@media (hover: hover) and (pointer: fine) {
+  html.has-cursor, html.has-cursor a, html.has-cursor button { cursor: none; }
+}
+
+/* film grain over the whole page, very subtle */
+.grain {
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  animation: grain 1.2s steps(6) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-3%, 2%); }
+  40% { transform: translate(2%, -3%); }
+  60% { transform: translate(-2%, -1%); }
+  80% { transform: translate(3%, 3%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* screen-reader only */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.2s !important; }
+  .grain { display: none; }
+}
+
+/* AtmosFit preview: data flowing along the paths, isobars drifting */
+.flow { stroke-dasharray: 18 400; animation: flow 3.2s linear infinite; }
+@keyframes flow { from { stroke-dashoffset: 418; } to { stroke-dashoffset: 0; } }
+.isobars { animation: drift 18s ease-in-out infinite alternate; }
+@keyframes drift { from { transform: translateY(-10px); } to { transform: translateY(12px); } }
+
+/* Beyond-code glyphs draw themselves on hover / focus */
+.glyph path { stroke-dasharray: 1; stroke-dashoffset: 0; transition: stroke-dashoffset 1.4s cubic-bezier(0.6, 0, 0.2, 1); }
+.group:hover .glyph path, .group:focus-visible .glyph path { animation: draw 1.6s cubic-bezier(0.6, 0, 0.2, 1); }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+/* mobile menu (CSS only) */
+.menu-in { animation: menu-in 0.3s ease both; }
+.menu-item-in { animation: menu-item-in 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes menu-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes menu-item-in { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
