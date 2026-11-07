@@ -43,6 +43,26 @@ const cssVar = (name: string, fallback: string) => {
   return new THREE.Vector3(r / 255, g / 255, b / 255);
 };
 
+// CPU copy of the shader's value noise, for values that are the same on every pixel (computed once per frame, not per pixel)
+const fract = (x: number) => x - Math.floor(x);
+function hash2(x: number, y: number) {
+  x = fract(x * 123.34);
+  y = fract(y * 456.21);
+  const d = x * (x + 45.32) + y * (y + 45.32);
+  return fract((x + d) * (y + d));
+}
+function noise2(x: number, y: number) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy), b = hash2(ix + 1, iy), c = hash2(ix, iy + 1), d = hash2(ix + 1, iy + 1);
+  return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+const smoothstep = (e0: number, e1: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+
 function loadTexture(loader: THREE.TextureLoader, src: string) {
   return new Promise<THREE.Texture>((resolve, reject) => loader.load(src, resolve, undefined, reject));
 }
@@ -53,7 +73,19 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
   const mobile = scene.coarse || window.innerWidth < 768;
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
-  const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.5);
+  // Render resolution. The shader is fill-rate bound (cost grows with pixel count), so:
+  //  - the hero renders at up to `maxDprFor()`, lowered step by step if this GPU can't hold the frame rate;
+  //  - past the hero, on touch screens, the dimmed and dithered backdrop renders at half CSS resolution
+  //    (0.5 keeps the dither cells whole pixels: 2 CSS px = 1 render px).
+  const dprCap = Math.min(window.devicePixelRatio || 1, mobile ? 1.25 : 1.5);
+  // pixel budget, so 1440p / 4K / high-DPI screens don't shade 4-8M pixels a frame (1080p stays native)
+  const PIXEL_BUDGET = mobile ? 0.65e6 : 2.1e6;
+  const maxDprFor = (w: number, h: number) => Math.max(0.5, Math.min(dprCap, Math.sqrt(PIXEL_BUDGET / (w * h))));
+  // Touch screens only: on desktop the cursor's "lens" resolves the image sharply mid-page, and half
+  // resolution visibly softens it. Phones have no cursor, and their GPUs gain the most.
+  const BACKDROP_DPR = scene.coarse ? 0.5 : Infinity;
+  let quality = 1;
+  const dpr = maxDprFor(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(dpr);
   renderer.setClearColor(0x07080b, 1);
 
@@ -103,6 +135,9 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
     uFigTexel: { value: new THREE.Vector2(1 / (imgEl.width || 1536), 1 / (imgEl.height || 2435)) },
     uDpr: { value: dpr },
     uTime: { value: 0 },
+    uGust: { value: 1 },
+    uFlick: { value: 1 },
+    uFlame: { value: 1 },
     uLayout: { value: new THREE.Vector4(0, 0, 1, 1) },
     uBack: { value: new THREE.Vector4(0, 0, 1, 1) },
     uFeather: { value: new THREE.Vector4(0, 0, 0, 0) },
@@ -259,11 +294,26 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
     uniforms.uBack.value.set((1 - bW) / 2, Math.max(1 - bH, Math.min(0, 0.32 - focal.y * bH)), bW, bH);
   }
 
+  let scale = 0;
+  function applyScale(s: number, force = false) {
+    if (s === scale && !force) return;
+    scale = s;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    renderer.setPixelRatio(s);
+    renderer.setSize(w, h, false);
+    uniforms.uRes.value.set(w * s, h * s);
+    uniforms.uDpr.value = pUniforms.uPx.value = sUniforms.uPx.value = s;
+  }
+  const targetScale = (inHero: boolean) => {
+    const hero = Math.max(0.5, maxDprFor(window.innerWidth, window.innerHeight) * quality);
+    return inHero ? hero : Math.min(hero, BACKDROP_DPR);
+  };
+
   function layout() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    renderer.setSize(w, h, false);
-    uniforms.uRes.value.set(w * dpr, h * dpr);
+    applyScale(targetScale(scene.heroProgress < 0.999 || scene.section === null), true);
     pUniforms.uAspect.value = sUniforms.uAspect.value = w / h;
     if (characterMode) layoutCharacter(w / h, imageAspect);
     else layoutWallpaper(w / h, imageAspect);
@@ -278,8 +328,27 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
   const light = { x: 0.42, y: 0.38 };
   let lastPx = 0, lastPy = 0, vel = 0, particleClock = 0, frame = 0, rate = 1;
   let visible = !document.hidden;
+
+  // Adaptive quality: if frames keep coming in slow, render fewer pixels. Only ever steps down, so it can't oscillate.
+  const samples: number[] = [];
+  let settle = 120; // ignore start-up (texture upload, shader warm-up) and the frames after each change
+  function govern(deltaMs: number) {
+    if (!visible || deltaMs > 250) return; // tab switches and stalls aren't render cost
+    if (settle > 0) return void settle--;
+    samples.push(deltaMs);
+    if (samples.length < 60) return;
+    samples.sort((a, b) => a - b);
+    const median = samples[30];
+    samples.length = 0;
+    if (median > 20 && quality > 0.5) {
+      quality = Math.max(0.5, quality - 0.25);
+      settle = 45;
+    }
+  }
+
   const onVis = () => {
     visible = !document.hidden;
+    settle = 60;
     if (video) visible ? video.play().catch(() => {}) : video.pause();
   };
   document.addEventListener('visibilitychange', onVis);
@@ -288,7 +357,9 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
 
   function render(time: number, deltaMs: number) {
     if (!visible) return;
+    govern(deltaMs);
     const inHero = scene.heroProgress < 0.999 || scene.section === null;
+    applyScale(targetScale(inHero));
     frame++;
     // Outside the hero the scene is a dim background: render at ~30 fps to save power.
     if (!inHero && frame % 2 === 1) return;
@@ -320,6 +391,10 @@ export async function createRenderer(opts: RendererOptions): Promise<WallpaperRe
     scene.scrollVelocity *= Math.pow(0.9, dt);
 
     uniforms.uTime.value = time;
+    // same value on every pixel: computed here once instead of in the fragment shader
+    uniforms.uGust.value = 0.45 + 0.55 * smoothstep(0.2, 0.8, noise2(time * 0.45, 3.7));
+    uniforms.uFlick.value = 0.9 + 0.1 * noise2(time * 3.0, 7.0);
+    uniforms.uFlame.value = 0.8 + 0.2 * Math.sin(time * 3.1) + 0.1 * noise2(time * 5.0, 1.0);
     uniforms.uMouse.value.set(mouse.x, mouse.y);
     uniforms.uLight.value.set(light.x, light.y);
     uniforms.uVel.value = vel;

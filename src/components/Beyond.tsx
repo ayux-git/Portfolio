@@ -24,13 +24,13 @@ export default function Beyond() {
     <section ref={root} id="beyond" data-tone="beyond" aria-labelledby="beyond-title" className="relative py-[16vh]">
       <div className="page">
         <SectionHead id="beyond-title" index="05" label="Beyond code" title={['Off the', 'keyboard.']} />
-        <ul className="-mx-[var(--gutter)] flex snap-x snap-mandatory gap-4 overflow-x-auto px-[var(--gutter)] pb-4 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-5 md:overflow-visible md:px-0">
+        <ul className="-mx-[var(--gutter)] flex snap-x snap-mandatory gap-4 overflow-x-auto px-[var(--gutter)] pb-4 [scrollbar-width:none] lg:mx-0 lg:grid lg:grid-cols-5 lg:overflow-visible lg:px-0">
           {beyond.map((b, i) => (
             <li
               key={b.title}
               data-reveal
               tabIndex={0}
-              className="glass group relative flex min-h-[300px] w-[72vw] shrink-0 snap-start flex-col justify-between rounded-[22px] border border-ink/10 p-6 transition-colors duration-500 hover:border-ink/25 focus-visible:border-ink/25 sm:w-[44vw] md:w-auto"
+              className="glass group relative flex min-h-[300px] w-[72vw] shrink-0 snap-start flex-col justify-between rounded-[22px] border border-ink/10 p-6 transition-colors duration-500 hover:border-ink/25 focus-visible:border-ink/25 sm:w-[44vw] lg:w-auto"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[11px] text-ink/55">0{i + 1}</span>

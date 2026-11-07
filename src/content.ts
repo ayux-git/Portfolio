@@ -38,7 +38,7 @@ export const site = {
 export const hero = {
   image: '/avatar.webp',
   imageMobile: '/avatar-mobile.webp',
-  depth: '/hero-depth.png', // regenerate with: npm run depth -- <frame.png>
+  depth: '/hero-depth.webp', // lossless copy of hero-depth.png (regenerate with: npm run depth -- <frame.png>, then convert)
   // Character scene (used when there is no video): the avatar cut out of its background, lit low-key,
   // with the red thread glowing and giving off energy. Rebuild: npm run cutout && python scripts/merge-alpha.py
   // && npm run assets && python scripts/make-fx.py (it prints the emitter positions below).
@@ -58,7 +58,9 @@ export const hero = {
   posterMobile: '/hero-poster-mobile.webp',
   focal: { x: 0.54, y: 0.255 },
   video: {
-    enabled: true, // set false to force the code-driven living image
+    // No clips in /public yet. While false, no requests are made for them, so the scene starts sooner.
+    // Set to true after adding hero-loop.webm / .mp4.
+    enabled: false,
     webm: '/hero-loop.webm',
     mp4: '/hero-loop.mp4',
     mobileMp4: '/hero-loop-mobile.mp4', // optional 720p / portrait crop

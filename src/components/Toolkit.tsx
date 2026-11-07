@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { skills } from '../content';
 import { useReveal } from '../lib/reveal';
-import { gsap } from '../lib/smoothScroll';
+import { gsap, scrollToTarget } from '../lib/smoothScroll';
 import { scene } from '../lib/scene';
 import SectionHead from './SectionHead';
 
@@ -58,6 +58,15 @@ export default function Toolkit() {
   const on = (group: string) => active === 'all' || active === group;
   const tabs = [{ id: 'all', label: 'All' }, ...skills.map((s) => ({ id: s.id, label: s.label }))];
 
+  // On small screens the list runs past the fold, so bring an off-screen group into view (focus stays on the tab).
+  const pick = (id: string) => {
+    setActive(id);
+    const group = id === 'all' ? null : document.querySelector<HTMLElement>(`#skill-list [data-group="${id}"]`);
+    if (!group) return;
+    const r = group.getBoundingClientRect();
+    if (r.top < 80 || r.bottom > window.innerHeight - 24) scrollToTarget(group, { offset: -120, focus: false });
+  };
+
   return (
     <section ref={root} id="skills" data-tone="skills" aria-labelledby="skills-title" className="relative py-[16vh]">
       <div className="page">
@@ -70,7 +79,7 @@ export default function Toolkit() {
                 key={t.id}
                 type="button"
                 aria-pressed={active === t.id}
-                onClick={() => setActive(t.id)}
+                onClick={() => pick(t.id)}
                 className={`relative shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[13px] transition-colors ${active === t.id ? 'text-bg' : 'text-ink/65 hover:text-ink'}`}
               >
                 <span aria-hidden="true" className={`absolute inset-0 rounded-full bg-ink transition-[opacity,transform] duration-300 ${active === t.id ? 'scale-100 opacity-100' : 'scale-75 opacity-0'}`} />
@@ -127,8 +136,10 @@ export default function Toolkit() {
 
           <div id="skill-list" className="space-y-8 lg:col-span-6">
             {skills.map((g) => (
-              <div key={g.id} data-reveal className={`transition-opacity duration-500 ${on(g.id) ? 'opacity-100' : 'opacity-25'}`}>
-                <h3 className="label mb-3 text-[10px]">{g.label}</h3>
+              // data-reveal (GSAP writes inline opacity) and the filter dim live on separate elements so they don't fight
+              <div key={g.id} data-reveal data-group={g.id}>
+                <div className={`transition-opacity duration-500 ${on(g.id) ? 'opacity-100' : 'opacity-20'}`}>
+                <h3 className={`label mb-3 text-[10px] transition-colors duration-500 ${active === g.id ? 'text-accent' : ''}`}>{g.label}</h3>
                 <ul className="flex flex-wrap gap-2">
                   {g.items.map((it) => (
                     <li
@@ -142,6 +153,7 @@ export default function Toolkit() {
                     </li>
                   ))}
                 </ul>
+                </div>
               </div>
             ))}
           </div>

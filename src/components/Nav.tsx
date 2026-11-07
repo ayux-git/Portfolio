@@ -29,10 +29,12 @@ export default function Nav({ visible }: { visible: boolean }) {
   const go = (href: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setOpen(false);
+    stopScroll(false); // Lenis ignores scrollTo while stopped (menu open); restart before jumping
     scrollToTarget(href);
   };
 
   return (
+    <>
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-[opacity,transform] duration-1000 ${visible ? 'translate-y-0 opacity-100' : '-translate-y-4 opacity-0'}`}
     >
@@ -87,9 +89,11 @@ export default function Nav({ visible }: { visible: boolean }) {
           </button>
         </div>
       </nav>
+    </header>
 
+      {/* Kept outside <header>: its transform would turn `fixed inset-0` into header-sized. */}
       {open && (
-        <div id="mobile-menu" className="menu-in fixed inset-0 -z-10 bg-bg/90 backdrop-blur-xl md:hidden">
+        <div id="mobile-menu" className="menu-in fixed inset-0 z-40 bg-bg/90 backdrop-blur-xl md:hidden">
           <ul className="page flex h-full flex-col justify-center gap-2">
             {nav.map((n, i) => (
               <li key={n.href} className="menu-item-in" style={{ animationDelay: `${0.05 * i + 0.1}s` }}>
@@ -102,6 +106,6 @@ export default function Nav({ visible }: { visible: boolean }) {
           </ul>
         </div>
       )}
-    </header>
+    </>
   );
 }

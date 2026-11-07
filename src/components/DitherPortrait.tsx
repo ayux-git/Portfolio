@@ -35,12 +35,18 @@ export default function DitherPortrait({
   useEffect(() => {
     const img = new Image();
     img.decoding = 'async';
-    img.src = srcSmall ?? src; // the 1-bit pass only needs a small source
     let cancelled = false;
+    // far below the fold: don't compete with the hero's downloads, start when it's about a screen away
+    const io = new IntersectionObserver((entries) => {
+      if (!entries.some((e) => e.isIntersecting)) return;
+      io.disconnect();
+      img.src = srcSmall ?? src; // the 1-bit pass only needs a small source
+    }, { rootMargin: '100% 0px' });
+    if (wrap.current) io.observe(wrap.current);
     const draw = () => {
       const c = canvas.current;
       const w = wrap.current;
-      if (!c || !w || cancelled) return;
+      if (!c || !w || cancelled || !img.naturalWidth) return; // not loaded yet (an <img> with no src reports complete)
       const cell = 2;
       const cols = Math.max(80, Math.floor(w.clientWidth / cell));
       const rows = Math.round(cols / ratio);
@@ -72,7 +78,7 @@ export default function DitherPortrait({
     img.onload = draw;
     const ro = new ResizeObserver(() => img.complete && draw());
     if (wrap.current) ro.observe(wrap.current);
-    return () => { cancelled = true; ro.disconnect(); };
+    return () => { cancelled = true; ro.disconnect(); io.disconnect(); };
   }, [src, srcSmall, ratio, accentBoxes]);
 
   // lens follows the cursor

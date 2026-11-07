@@ -20,11 +20,13 @@ export function initSmoothScroll() {
   return lenis;
 }
 
-export function scrollToTarget(target: string | HTMLElement) {
+export function scrollToTarget(target: string | HTMLElement, { offset = 0, focus = true } = {}) {
   const el = typeof target === 'string' ? document.querySelector<HTMLElement>(target) : target;
   if (!el) return;
-  if (lenis) lenis.scrollTo(el, { offset: 0, duration: 1.4 });
+  if (lenis) lenis.scrollTo(el, { offset, duration: 1.4 });
+  else if (offset) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY + offset, behavior: scene.reducedMotion ? 'auto' : 'smooth' });
   else el.scrollIntoView({ behavior: scene.reducedMotion ? 'auto' : 'smooth' });
+  if (!focus) return;
   // move keyboard focus to the section for screen readers / keyboard users
   el.setAttribute('tabindex', '-1');
   el.focus({ preventScroll: true });

@@ -15,9 +15,12 @@ export default function Cursor() {
     const rx = gsap.quickTo(ring.current, 'x', { duration: 0.45, ease: 'power3' });
     const ry = gsap.quickTo(ring.current, 'y', { duration: 0.45, ease: 'power3' });
     let current: Element | null = null;
+    let shown = false;
 
     const move = (e: PointerEvent) => {
       dx(e.clientX); dy(e.clientY); rx(e.clientX); ry(e.clientY);
+      if (shown) return;
+      shown = true;
       gsap.to([dot.current, ring.current], { opacity: 1, duration: 0.3, overwrite: 'auto' });
     };
     const over = (e: PointerEvent) => {
@@ -33,7 +36,10 @@ export default function Cursor() {
         gsap.to(dot.current, { scale: 1, duration: 0.25 });
       }
     };
-    const leave = () => gsap.to([dot.current, ring.current], { opacity: 0, duration: 0.3 });
+    const leave = () => {
+      shown = false;
+      gsap.to([dot.current, ring.current], { opacity: 0, duration: 0.3, overwrite: 'auto' });
+    };
     window.addEventListener('pointermove', move, { passive: true });
     window.addEventListener('pointerover', over, { passive: true });
     document.documentElement.addEventListener('mouseleave', leave);

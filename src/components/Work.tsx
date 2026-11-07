@@ -44,7 +44,7 @@ function ProjectCard({ p, i, total }: { p: Project; i: number; total: number }) 
       ref={card}
       data-card
       aria-labelledby={`${p.slug}-title`}
-      className="group relative overflow-hidden rounded-[28px] border border-ink/10 bg-[rgb(11_13_18/0.97)] backdrop-blur-xl md:sticky"
+      className="group overflow-hidden rounded-[28px] border border-ink/10 bg-[rgb(11_13_18/0.97)] sticky"
       data-index={i}
     >
       {/* light that follows the cursor across the card */}
@@ -116,9 +116,14 @@ export default function Work() {
   useEffect(() => {
     const el = root.current;
     // sticky stacking only moves with the user's own scroll, so it stays on with reduced motion; only the sink effect is skipped
-    if (!el || !window.matchMedia('(min-width: 768px)').matches) return;
+    if (!el) return;
     const cards = Array.from(el.querySelectorAll<HTMLElement>('[data-card]'));
+    let lastW = 0, lastH = 0;
     const place = () => {
+      // mobile browsers fire resize when the address bar slides; ignore those small height changes
+      if (window.innerWidth === lastW && Math.abs(window.innerHeight - lastH) < 120) return;
+      lastW = window.innerWidth;
+      lastH = window.innerHeight;
       cards.forEach((c, i) => {
         const offset = window.innerHeight * 0.11 + i * 22;
         const fit = window.innerHeight - c.offsetHeight - 24; // keeps the last line visible
@@ -136,7 +141,6 @@ export default function Work() {
         gsap.to(c, {
           scale: 0.93,
           opacity: 0.35,
-          filter: 'blur(2px)',
           ease: 'none',
           scrollTrigger: { trigger: next, start: () => `top ${Math.min(window.innerHeight, parseFloat(c.style.top) + c.offsetHeight)}px`, end: 'top 15%', scrub: true, invalidateOnRefresh: true },
         });
@@ -158,7 +162,7 @@ export default function Work() {
           title={['Three builds,', 'shipped end to end.']}
           aside="Case studies, newest first. Each one taught me something the tutorials skipped."
         />
-        <div className="flex flex-col gap-8 md:gap-[38vh]">
+        <div className="flex flex-col gap-[28vh] md:gap-[38vh]">
           {projects.map((p, i) => (
             <ProjectCard key={p.slug} p={p} i={i} total={projects.length} />
           ))}

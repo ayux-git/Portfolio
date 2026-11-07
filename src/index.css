@@ -105,7 +105,7 @@
 /* film grain over the whole page, very subtle */
 .grain {
   position: fixed;
-  inset: -50%;
+  inset: -8%; /* the animation moves it at most 3% of its own size, so 8% overscan is enough (was -50%: a layer 4x the screen) */
   pointer-events: none;
   z-index: 60;
   opacity: 0.05;

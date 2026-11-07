@@ -22,9 +22,11 @@ export default function Hero({ entered }: { entered: boolean }) {
         ScrollTrigger.create(st);
         return;
       }
+      // scrubbed blur repaints the huge headline every scroll frame: desktop only, phones get the move + fade
+      const blur = (px: number) => (scene.coarse ? {} : { filter: `blur(${px}px)` });
       gsap.timeline({ scrollTrigger: { ...st, scrub: 0.6 } })
-        .to('[data-depth="1"]', { xPercent: -22, yPercent: -18, opacity: 0, filter: 'blur(10px)', ease: 'power1.in', duration: 0.8 }, 0.1)
-        .to('[data-depth="2"]', { xPercent: 30, yPercent: -6, opacity: 0, filter: 'blur(6px)', ease: 'power1.in', duration: 0.8 }, 0.16)
+        .to('[data-depth="1"]', { xPercent: -22, yPercent: -18, opacity: 0, ...blur(10), ease: 'power1.in', duration: 0.8 }, 0.1)
+        .to('[data-depth="2"]', { xPercent: 30, yPercent: -6, opacity: 0, ...blur(6), ease: 'power1.in', duration: 0.8 }, 0.16)
         .to('[data-depth="3"]', { y: -70, opacity: 0, ease: 'power1.out', duration: 0.32 }, 0)
         .to('[data-depth="hint"]', { opacity: 0, duration: 0.15 }, 0)
         .to({}, { duration: 0.1 }, 0.9);
